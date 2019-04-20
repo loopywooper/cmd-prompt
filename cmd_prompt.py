@@ -44,7 +44,7 @@ functions respectively.
 
 import string, sys
 
-from prompt_toolkit.completion import WordCompleter, Completer, Completion
+from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit import PromptSession
 from prompt_toolkit.shortcuts import CompleteStyle
 
@@ -52,6 +52,15 @@ __all__ = ["Cmd"]
 
 PROMPT = '(Cmd) '
 IDENTCHARS = string.ascii_letters + string.digits + '_'
+
+
+class MyCompleter(Completer):
+    def __init__(self, cmd):
+        self.cmd = cmd
+
+    def get_completions(self, document, complete_event):
+        for c in self.cmd.complete(document):
+            yield Completion(c, document.find_boundaries_of_current_word()[0])
 
 
 class Cmd:
@@ -78,16 +87,12 @@ class Cmd:
     nohelp = "*** No help on %s"
     use_rawinput = 1
 
-    def __init__(self, completekey='tab', stdin=None, stdout=None):
+    def __init__(self, stdin=None, stdout=None):
         """Instantiate a line-oriented interpreter framework.
-
-        The optional argument 'completekey' is the readline name of a
-        completion key; it defaults to the Tab key. If completekey is
-        not None and the readline module is available, command completion
-        is done automatically. The optional arguments stdin and stdout
+        Command completion is done automatically using the prompt_toolkit
+        library. The optional arguments stdin and stdout
         specify alternate input and output file objects; if not specified,
         sys.stdin and sys.stdout are used.
-
         """
         if stdin is not None:
             self.stdin = stdin
@@ -98,23 +103,9 @@ class Cmd:
         else:
             self.stdout = sys.stdout
         self.cmdqueue = []
-        self.completekey = completekey
 
-        self.prompt_session = None
-        self.setup()
-
-    def setup(self):
-        class MyCompleter(Completer):
-            def __init__(self, cmd):
-                self.cmd = cmd
-
-            def get_completions(self, document, complete_event):
-                for c in self.cmd.complete(document):
-                    yield Completion(c, document.find_boundaries_of_current_word()[0])
-
-        completer = MyCompleter(self)
         self.prompt_session = PromptSession(complete_style=CompleteStyle.READLINE_LIKE,
-                                            completer=completer)
+                                            completer=MyCompleter(self))
 
     def cmdloop(self, intro=None):
         """Repeatedly issue a prompt, accept input, parse an initial prefix
